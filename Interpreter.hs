@@ -63,10 +63,10 @@ run env = case focus $ program env of
     Just op -> run $ step env
 
 runProgram :: Input -> String -> Output
-runProgram i = output . run . start i . listToTape . parse
+runProgram i = output . run . start i . listToTape . lexer
 
 stepThrough :: Input -> String -> IO ()
-stepThrough i = stepInto . start i . listToTape . parse
-  where stepInto env = case focus $ program env of
-            Nothing -> print env
-            Just op -> print env >> putStrLn "\n" >> stepInto (step env)
+stepThrough i = stepInto . start i . listToTape . lexer
+  where stepInto e = case focus $ program e of
+            Nothing -> print e
+            Just op -> getLine >> print e >> putStrLn "\n" >> stepInto (step e)

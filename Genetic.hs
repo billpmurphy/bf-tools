@@ -5,42 +5,51 @@ module Genetic where
 import Control.Monad.Random
 
 import Control.Monad
+import Data.List (sortBy)
+import Data.Ord (comparing)
 import Parser
 import Interpreter
 
 data ProblemType = Maximizing | Minimizing
 
-data Optimization a = Optimization ProblemType (a -> Double)
+data Optimization a = Optimization { problem :: ProblemType, fn :: a -> Double }
 
 type GenomeLength = Int
 type Population a = [a]
 type Fitness      = Double
 
-data Phenotype a  = Phenotype Fitness a
+data Phenotype a  = Phenotype { fitness :: Fitness, genotype :: a }
 
 class Genome a where
     randomEntity :: MonadRandom g => GenomeLength -> g a
 
     randomPool :: MonadRandom g => Int -> GenomeLength -> g (Population a)
-    randomPool poolSize = sequence . replicate poolSize . randomEntity
+    randomPool poolSize = replicateM poolSize . randomEntity
 
-    mutate :: MonadRandom g => a -> g a
+    mutate :: MonadRandom g => Double -> a -> g a
 
     crossover :: MonadRandom g => a -> a -> g a
 
-    fitness :: Optimization a -> a -> Fitness
-
     phenotype :: Optimization a -> a -> Phenotype a
-    phenotype o x = Phenotype (fitness o x) x
+    phenotype = fn
 
-    select :: MonadRandom g => Int -> Population (Phenotype a) -> g (Population a)
+    selectElite :: MonadRandom g => Population (Phenotype a) -> g (Population a)
 
+selectTopN:: Int -> Population (Phenotype a) -> g (Population a)
+selectTopN i = take i . sortBy (comparing fitness)
 ------------
 
+instance Random Operator where
+    random g = case randomR (0, 7) g of
+                (r, g') -> (toEnum r, g')
+    randomR (a, b) g = case randomR (fromEnum a, fromEnum b) g of
+                        (r, g') -> (toEnum r, g')
+
 instance Genome [Operator] where
-    randomEntity i = sequence . replicate i $ getRandom
-      where ops    = map snd operations
-    mutate    = undefined
-    crossover = undefined
-    fitness   = undefined
-    select    = undefined
+    randomEntity i = do
+        p <- replicateM i getRandom
+        if valid p then return p else randomEntity i
+
+    mutate       = undefined
+    crossover    = undefined
+    selectElite  = undefined
